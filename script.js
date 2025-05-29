@@ -10,23 +10,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const historicoGridDiv = document.getElementById('historicoGrid');
     const inputBuscaJogador = document.getElementById('buscaJogador');
-    // const btnLimparHistorico = document.getElementById('btnLimparHistorico'); // REMOVIDO
-
+    
     const totalJogosSpan = document.getElementById('totalJogos');
     const jogadoresUnicosSpan = document.getElementById('jogadoresUnicos');
 
     const painelMaisFrequentesUl = document.getElementById('listaMaisFrequentes');
     const painelMenosFrequentesUl = document.getElementById('listaMenosFrequentes');
     const mensagemDashboardVazioEl = document.getElementById('mensagemDashboardVazio');
-    const dashboardAnaliseSectionPanels = document.getElementById('dashboardAnalise').querySelector('.frequency-panels'); // Referência aos painéis
+    const dashboardAnaliseSectionPanels = document.getElementById('dashboardAnalise').querySelector('.frequency-panels');
 
     const analiseQuinaDisplayEl = document.getElementById('analiseQuinaDisplay');
     const notaSelecaoQuinaEl = document.getElementById('notaSelecaoQuina');
     const scoreQuinaBarEl = document.getElementById('scoreQuinaBar');
     const descricaoSelecaoQuinaEl = document.getElementById('descricaoSelecaoQuina');
 
-    // Estado da Aplicação (em memória)
-    let dadosJogos = []; 
+    // --- Chave para localStorage ---
+    const LOCAL_STORAGE_KEY_JOGOS = 'meusJogosLoteriaMasterApp';
+
+    // Estado da Aplicação (carregado do localStorage ou inicializado)
+    let dadosJogos = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY_JOGOS)) || []; 
     let numerosSelecionados = [];
     let idEdicaoAtual = null;
     let termoBuscaAtual = '';
@@ -37,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const MIN_CONFLICT_COUNT = 3;
     const TOP_N_FREQUENCIA = 10;
 
-    // DADOS HISTÓRICOS DA QUINA FORNECIDOS E CONFIGURAÇÕES DE PONTUAÇÃO
     const FREQUENCIAS_QUINA_FORNECIDAS = {
         4: 480, 52: 465, 49: 464, 26: 462, 44: 456, 31: 455, 53: 451, 15: 450, 39: 450, 16: 449,
         5: 447, 29: 446, 37: 444, 56: 443, 9: 441, 42: 441, 61: 440, 40: 440, 10: 440, 66: 439,
@@ -58,6 +59,11 @@ document.addEventListener('DOMContentLoaded', () => {
         mediaFrequentes: [],
         poucoFrequentes: []
     };
+
+    // --- Função para salvar dados no localStorage ---
+    function salvarDados() {
+        localStorage.setItem(LOCAL_STORAGE_KEY_JOGOS, JSON.stringify(dadosJogos));
+    }
 
     // --- Funções de Feedback Visual ---
     function exibirMensagem(texto, tipo = 'error', duracao = 4000) {
@@ -149,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSalvarJogo.textContent = '💾 Salvar Jogo';
         atualizarVisualGrade();
         renderizarNumerosSelecionados();
-        analiseQuinaDisplayEl.style.display = 'none'; // Esconde análise
+        analiseQuinaDisplayEl.style.display = 'none';
         nomeJogadorInput.focus();
     }
     btnLimparEscolhas.addEventListener('click', () => {
@@ -172,7 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const resultadoConflito = verificarConflitoDezenas(numerosSelecionados, idEdicaoAtual);
         if (resultadoConflito.conflito) {
             const dezenasConflitoStr = resultadoConflito.dezenasConflito.map(d => d.toString().padStart(2, '0')).join(', ');
-            exibirMensagem(`Conflito com jogo interno! ${resultadoConflito.count} dezenas (${dezenasConflitoStr}) são iguais às do jogo de ${resultadoConflito.nomeConflito}. Escolha outras dezenas.`, 'error', 5000);
+            exibirMensagem(`Conflito com jogo salvo! <span class="math-inline">\{resultadoConflito\.count\} dezenas \(</span>{dezenasConflitoStr}) são iguais às do jogo de ${resultadoConflito.nomeConflito}. Escolha outras dezenas.`, 'error', 5000);
             return;
         }
         
@@ -195,6 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
             exibirMensagem('Jogo salvo com sucesso!', 'success');
         }
         
+        salvarDados(); // <<--- SALVA NO LOCALSTORAGE
         limparFormulario();
         atualizarTudo();
     });
@@ -229,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
         );
 
         if (jogosFiltrados.length === 0) {
-            historicoGridDiv.innerHTML = `<p class="message info show" style="margin-top: 10px;">${dadosJogos.length === 0 ? 'Nenhum jogo no histórico desta sessão.' : 'Nenhum jogo encontrado para "' + termoBuscaAtual + '".'}</p>`;
+            historicoGridDiv.innerHTML = `<p class="message info show" style="margin-top: 10px;">${dadosJogos.length === 0 ? 'Nenhum jogo salvo ainda.' : 'Nenhum jogo encontrado para "' + termoBuscaAtual + '".'}</p>`;
             return;
         }
 
@@ -243,8 +250,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const dezenasFormatadas = jogo.dezenas.map(d => d.toString().padStart(2, '0')).join(' - ');
             
             itemDiv.innerHTML = `
-                <div class="info-jogador">${jogo.nome}</div>
-                <div class="info-data">${new Date(jogo.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                <div class="info-jogador"><span class="math-inline">\{jogo\.nome\}</div\>
+<div class\="info\-data"\></span>{new Date(jogo.timestamp).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                 <div class="dezenas-compactas">${dezenasFormatadas}</div>
                 <div class="history-item-actions-compact">
                     <button class="btn btn-secondary btn-sm btn-editar" title="Editar Jogo">✏️ Editar</button>
@@ -280,12 +287,11 @@ document.addEventListener('DOMContentLoaded', () => {
             dadosJogos = dadosJogos.filter(j => j.id !== idJogo);
             if (idEdicaoAtual === idJogo) limparFormulario();
             
+            salvarDados(); // <<--- SALVA NO LOCALSTORAGE
             exibirMensagem(`Jogo de ${nomeJogo} deletado.`, 'success');
             atualizarTudo();
         }
     }
-
-    // REMOVIDO: Event listener e lógica para btnLimparHistorico
 
     // --- Funções de Análise de Frequência (Quina - Dados Fornecidos) ---
     function calcularECategorizarFrequenciasQuina() {
@@ -316,30 +322,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 CATEGORIAS_FREQUENCIA_QUINA.mediaFrequentes.push(numero);
             }
         }
-        // Ajuste fino se as categorias principais estiverem vazias devido a Q1=Q3 e poucos elementos
-        if (CATEGORIAS_FREQUENCIA_QUINA.muitoFrequentes.length === 0) {
+        
+        if (CATEGORIAS_FREQUENCIA_QUINA.muitoFrequentes.length === 0 && Object.keys(FREQUENCIAS_QUINA_FORNECIDAS).length > 0) {
             const sortedByFreqDesc = Object.entries(FREQUENCIAS_QUINA_FORNECIDAS)
                 .sort(([,a],[,b]) => b-a)
                 .map(([num]) => parseInt(num));
             CATEGORIAS_FREQUENCIA_QUINA.muitoFrequentes = sortedByFreqDesc.slice(0, Math.min(TOP_N_FREQUENCIA, Math.floor(sortedByFreqDesc.length * 0.25) || 1) );
         }
-         if (CATEGORIAS_FREQUENCIA_QUINA.poucoFrequentes.length === 0) {
+         if (CATEGORIAS_FREQUENCIA_QUINA.poucoFrequentes.length === 0 && Object.keys(FREQUENCIAS_QUINA_FORNECIDAS).length > 0) {
             const sortedByFreqAsc = Object.entries(FREQUENCIAS_QUINA_FORNECIDAS)
                 .sort(([,a],[,b]) => a-b)
                 .map(([num]) => parseInt(num));
             CATEGORIAS_FREQUENCIA_QUINA.poucoFrequentes = sortedByFreqAsc.slice(0, Math.min(TOP_N_FREQUENCIA, Math.floor(sortedByFreqAsc.length * 0.25) || 1) );
         }
-        // Preenche mediaFrequentes com o restante que não caiu nas outras duas categorias
+        
         const todosOsNumeros = Object.keys(FREQUENCIAS_QUINA_FORNECIDAS).map(n => parseInt(n));
         CATEGORIAS_FREQUENCIA_QUINA.mediaFrequentes = todosOsNumeros.filter(n => 
             !CATEGORIAS_FREQUENCIA_QUINA.muitoFrequentes.includes(n) &&
             !CATEGORIAS_FREQUENCIA_QUINA.poucoFrequentes.includes(n)
         );
-
     }
 
-    function renderizarDashboardFrequenciaQuina() { // Renomeado para clareza
-        if (Object.keys(FREQUENCIAS_QUINA_FORNECIDAS).length === 0) { // Verifica se há dados da Quina
+    function renderizarDashboardFrequenciaQuina() { 
+        if (Object.keys(FREQUENCIAS_QUINA_FORNECIDAS).length === 0) { 
             dashboardAnaliseSectionPanels.style.display = 'none';
             mensagemDashboardVazioEl.textContent = 'Dados históricos da Quina não disponíveis para análise.';
             mensagemDashboardVazioEl.style.display = 'block';
@@ -349,7 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dashboardAnaliseSectionPanels.style.display = 'flex';
         mensagemDashboardVazioEl.style.display = 'none';
 
-        // Usa as categorias já calculadas e ordenadas se necessário para o TOP N
         const maisFrequentesLista = [...CATEGORIAS_FREQUENCIA_QUINA.muitoFrequentes]
             .sort((a, b) => FREQUENCIAS_QUINA_FORNECIDAS[b] - FREQUENCIAS_QUINA_FORNECIDAS[a])
             .slice(0, TOP_N_FREQUENCIA);
@@ -362,7 +366,7 @@ document.addEventListener('DOMContentLoaded', () => {
         atualizarListaFrequenciaQuina(painelMenosFrequentesUl, menosFrequentesLista);
     }
 
-    function atualizarListaFrequenciaQuina(ulElement, dadosLista) { // Renomeado
+    function atualizarListaFrequenciaQuina(ulElement, dadosLista) { 
         ulElement.innerHTML = '';
         if (dadosLista.length === 0) {
             ulElement.innerHTML = '<li>Nenhum dado nesta categoria.</li>';
@@ -372,8 +376,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const contagem = FREQUENCIAS_QUINA_FORNECIDAS[numero];
             const li = document.createElement('li');
             li.innerHTML = `
-                <span class="numero">${numero.toString().padStart(2, '0')}</span>
-                <span class="contagem">${contagem} vez${contagem > 1 ? 'es' : ''}</span>
+                <span class="numero"><span class="math-inline">\{numero\.toString\(\)\.padStart\(2, '0'\)\}</span\>
+<span class\="contagem"\></span>{contagem} vez${contagem > 1 ? 'es' : ''}</span>
             `;
             ulElement.appendChild(li);
         });
@@ -417,64 +421,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
         percentual = Math.max(0, Math.min(100, Math.round(percentual)));
 
-        let notaQualitativa = '';
-        let descricao = `Sua seleção contém: ${contMuitoFrequentes} nº(s) classificados como 'muito frequentes', ${contPoucoFrequentes} como 'pouco frequentes' e ${contMediaFrequentes} como 'frequência média'. (Análise baseada nos dados históricos da Quina fornecidos).`;
-
-        if (percentual >= 80) {
-            notaQualitativa = "🔥 Seleção Altamente Estratégica!";
-            descricao += " Forte alinhamento com os números de maior frequência histórica (dados fornecidos).";
-        } else if (percentual >= 60) {
-            notaQualitativa = "🌟 Seleção Promissora!";
-            descricao += " Boa combinação, com tendência a números de alta e média frequência (dados fornecidos).";
-        } else if (percentual >= 40) {
-            notaQualitativa = "⚖️ Seleção Equilibrada.";
-            descricao += " Combinação balanceada de diferentes padrões de frequência (dados fornecidos).";
-        } else if (percentual >= 20) {
-            notaQualitativa = "🤔 Seleção Diferenciada.";
-            descricao += " Tende a incluir números de média ou baixa frequência histórica (dados fornecidos).";
-        } else {
-            notaQualitativa = "🧊 Seleção Ousada (Contrarian)!";
-            descricao += " Foco em números de baixa frequência histórica, buscando um padrão menos comum (dados fornecidos).";
-        }
-        
-        analiseQuinaDisplayEl.style.display = 'block';
-        notaSelecaoQuinaEl.textContent = `${notaQualitativa} (Potencial de Alinhamento: ${percentual.toFixed(0)}%)`;
-        scoreQuinaBarEl.style.width = `${percentual}%`;
-        
-        if (percentual < 33) {
-            scoreQuinaBarEl.style.backgroundColor = 'var(--red-frequency)';
-        } else if (percentual < 66) {
-            scoreQuinaBarEl.style.backgroundColor = 'var(--warning-color)';
-        } else {
-            scoreQuinaBarEl.style.backgroundColor = 'var(--green-frequency)';
-        }
-        descricaoSelecaoQuinaEl.textContent = descricao;
-    }
-
-
-    // --- Funções de Estatísticas Gerais ---
-    function atualizarEstatisticasGerais() {
-        totalJogosSpan.textContent = dadosJogos.length;
-        const nomesUnicos = new Set(dadosJogos.map(j => j.nome.toLowerCase()));
-        jogadoresUnicosSpan.textContent = nomesUnicos.size;
-    }
-
-    // --- Função Unificada de Atualização da UI ---
-    function atualizarTudo() {
-        renderizarHistorico();
-        atualizarEstatisticasGerais();
-        renderizarDashboardFrequenciaQuina(); // Atualizado para a função correta
-    }
-
-    // --- Inicialização ---
-    function init() {
-        calcularECategorizarFrequenciasQuina(); 
-        renderizarGradeDezenas();
-        renderizarNumerosSelecionados();
-        atualizarTudo(); 
-        nomeJogadorInput.focus();
-        analiseQuinaDisplayEl.style.display = 'none';
-    }
-
-    init();
-});
+        let notaQualitativa
